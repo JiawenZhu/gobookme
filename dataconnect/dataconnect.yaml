@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "gobookme-db"
+location: "us-central1"
+schemas:
+  - source: "./schema"
+    datasource:
+      postgresql:
+        database: "gobookme_dc"
+        cloudSql:
+          instanceId: "gobookme-db-instance"
+          schemaValidation: "COMPATIBLE" # COMPATIBLE mode makes Postgres schema compatible with Data Connect.
+connectorDirs: ["./example"]

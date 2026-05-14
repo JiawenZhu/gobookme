@@ -1,0 +1,128 @@
+# Firebase App Hosting — gobookme
+# https://firebase.google.com/docs/app-hosting/configure
+#
+# Deploy: firebase apphosting:backends:create (one-time)
+# Then every push to the connected GitHub branch auto-deploys.
+
+runConfig:
+  # Node.js 22 = LTS at time of writing; matches the project's engine range
+  runtime: nodejs22
+  # Cloud Run concurrency: how many requests each instance handles simultaneously
+  concurrency: 80
+  # Scale to zero when idle (cost-saving); bump minInstances to 1 for zero cold-starts
+  minInstances: 0
+  maxInstances: 100
+  # This is a large Next.js monorepo — give it room to breathe
+  cpu: 2
+  memoryMiB: 2048
+
+env:
+  # ── Build-time only ─────────────────────────────────────────────────────────
+  - variable: BUILD_STANDALONE
+    value: "true"         # Activates next.config.ts standalone output for Cloud Run
+    availability:
+      - BUILD
+
+  - variable: NODE_OPTIONS
+    value: "--max-old-space-size=4096"   # Turborepo + Next.js build needs memory headroom
+    availability:
+      - BUILD
+
+  # Skip Sentry release upload during CI builds (no token needed)
+  - variable: SENTRY_AUTH_TOKEN
+    value: ""
+    availability:
+      - BUILD
+
+  # ── Public / non-sensitive (baked into the JS bundle at build time) ─────────
+  - variable: NEXT_PUBLIC_APP_NAME
+    value: gobookme
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_COMPANY_NAME
+    value: "gobookme, Inc."
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_SUPPORT_MAIL_ADDRESS
+    value: help@gobookme.com
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_DISABLE_SIGNUP
+    value: ""             # Leave empty to allow signups
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # ── Secrets (stored in Google Cloud Secret Manager — see setup guide below) ─
+  # Create each secret with:
+  #   gcloud secrets create SECRET_NAME --data-file=- <<< "your-value"
+
+  - variable: DATABASE_URL
+    secret: DATABASE_URL           # PostgreSQL connection string (e.g. from Neon)
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: DATABASE_DIRECT_URL
+    secret: DATABASE_DIRECT_URL    # Same as DATABASE_URL unless using a pooler
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXTAUTH_SECRET
+    secret: NEXTAUTH_SECRET        # Random 32-char string: openssl rand -base64 32
+    availability:
+      - RUNTIME
+
+  - variable: NEXTAUTH_URL
+    secret: NEXTAUTH_URL           # Your Firebase Hosting URL: https://gobookme-XXXX.web.app
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_WEBAPP_URL
+    secret: NEXT_PUBLIC_WEBAPP_URL  # Same as NEXTAUTH_URL (or your custom domain)
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: CALENDSO_ENCRYPTION_KEY
+    secret: CALENDSO_ENCRYPTION_KEY  # Exactly 32 chars: openssl rand -base64 24
+    availability:
+      - RUNTIME
+
+  - variable: GOOGLE_API_CREDENTIALS
+    secret: GOOGLE_API_CREDENTIALS   # JSON: {"client_id":"...","client_secret":"..."}
+    availability:
+      - RUNTIME
+
+  - variable: EMAIL_FROM
+    secret: EMAIL_FROM               # SMTP sender: "notifications@gobookme.com"
+    availability:
+      - RUNTIME
+
+  - variable: EMAIL_SERVER_HOST
+    secret: EMAIL_SERVER_HOST
+    availability:
+      - RUNTIME
+
+  - variable: EMAIL_SERVER_PORT
+    secret: EMAIL_SERVER_PORT
+    availability:
+      - RUNTIME
+
+  - variable: EMAIL_SERVER_USER
+    secret: EMAIL_SERVER_USER
+    availability:
+      - RUNTIME
+
+  - variable: EMAIL_SERVER_PASSWORD
+    secret: EMAIL_SERVER_PASSWORD
+    availability:
+      - RUNTIME

@@ -204,9 +204,16 @@ export default function Login({
                       onClick={async (e) => {
                         e.preventDefault();
                         setLastUsed("google");
-                        await signIn("google", {
-                          callbackUrl,
-                        });
+                        try {
+                          const { signInWithPopup, GoogleAuthProvider } = await import("firebase/auth");
+                          const { firebaseAuth } = await import("@lib/firebase/client");
+                          const provider = new GoogleAuthProvider();
+                          const result = await signInWithPopup(firebaseAuth, provider);
+                          const idToken = await result.user.getIdToken();
+                          await signIn("firebase", { firebaseToken: idToken, callbackUrl });
+                        } catch (err) {
+                          setErrorMessage(t("something_went_wrong"));
+                        }
                       }}>
                       <GoogleIcon />
                       <span>{t("signin_with_google")}</span>

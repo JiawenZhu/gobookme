@@ -1,0 +1,5 @@
+connectorId: example
+generate:
+  javascriptSdk:
+    outputDir: "../../apps/web/lib/generated"
+    package: "@gobookme/sdk"

@@ -1,4 +1,3 @@
-import process from "node:process";
 import { updateProfilePhotoGoogle } from "@calcom/app-store/_utils/oauth/updateProfilePhotoGoogle";
 import { updateProfilePhotoMicrosoft } from "@calcom/app-store/_utils/oauth/updateProfilePhotoMicrosoft";
 import { createGoogleCalendarServiceWithGoogleType } from "@calcom/app-store/googlecalendar/lib/CalendarService";
@@ -300,7 +299,59 @@ export const CalComCredentialsProvider = CredentialsProvider({
   authorize: authorizeCredentials,
 });
 
-const providers: Provider[] = [CalComCredentialsProvider];
+export const FirebaseCredentialsProvider = CredentialsProvider({
+  id: "firebase",
+  name: "Firebase",
+  type: "credentials",
+  credentials: {
+    firebaseToken: { label: "Firebase ID Token", type: "text" },
+  },
+  async authorize(credentials, _req) {
+    if (!credentials?.firebaseToken) return null;
+    try {
+      const { firebaseAdminAuth } = await import("./firebase-admin");
+      const decoded = await firebaseAdminAuth.verifyIdToken(credentials.firebaseToken);
+      const email = decoded.email;
+      if (!email) return null;
+
+      let user = await prisma.user.findFirst({
+        where: { email },
+        select: { id: true, email: true, name: true, username: true, role: true, locale: true, twoFactorEnabled: true },
+      });
+
+      if (!user) {
+        const baseUsername = slugify(email.split("@")[0]);
+        const username = usernameSlug(baseUsername);
+        const newUser = await prisma.user.create({
+          data: {
+            email,
+            name: decoded.name ?? email.split("@")[0],
+            username,
+            emailVerified: new Date(),
+            identityProvider: IdentityProvider.GOOGLE,
+            identityProviderId: decoded.uid,
+          },
+          select: { id: true, email: true, name: true, username: true, role: true, locale: true, twoFactorEnabled: true },
+        });
+        user = newUser;
+      }
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        username: user.username,
+        role: user.role,
+        belongsToActiveTeam: false,
+      } as User;
+    } catch (err) {
+      log.error("Firebase token verification failed", err);
+      return null;
+    }
+  },
+});
+
+const providers: Provider[] = [CalComCredentialsProvider, FirebaseCredentialsProvider];
 type SamlIdpUser = {
   id: number;
   userId: number;

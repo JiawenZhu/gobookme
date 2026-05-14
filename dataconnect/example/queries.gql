@@ -1,0 +1,69 @@
+# GoBookMe Data Connect queries
+
+query ListUsers @auth(level: USER) {
+  users {
+    id
+    username
+    name
+    email
+    timeZone
+  }
+}
+
+query ListTeams @auth(level: PUBLIC) {
+  teams {
+    id
+    name
+    slug
+    createdAt
+  }
+}
+
+query GetUser($id: Int!) @auth(level: USER) {
+  user(id: $id) {
+    id
+    username
+    name
+    email
+    timeZone
+    locale
+  }
+}
+
+query ListBookings @auth(level: USER) {
+  bookings {
+    id
+    uid
+    title
+    startTime
+    endTime
+    status
+    userId
+    eventTypeId
+  }
+}
+
+query GetBookingById($id: Int!) @auth(level: USER) {
+  booking(id: $id) {
+    id
+    uid
+    title
+    startTime
+    endTime
+    status
+    location
+    userId
+    eventTypeId
+    description
+    createdAt
+  }
+}
+
+query GetUserCredentials($userId: Int!) @auth(level: USER) {
+  credentials(where: { userId: { eq: $userId } }) {
+    id
+    type
+    appId
+    userId
+  }
+}

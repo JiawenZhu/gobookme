@@ -70,14 +70,12 @@ const CalcomThemeProvider = (props: CalcomThemeProps) => {
       {/* Embed Mode can be detected reliably only on client side here as there can be static generated pages as well which can't determine if it's embed mode at backend */}
       {/* color-scheme makes background:transparent not work in iframe which is required by embed. */}
       {typeof window !== "undefined" && !isEmbedMode && (
-        //eslint-disable-next-line react/no-unknown-property
-        <style jsx global>
-          {`
-            .dark {
-              color-scheme: dark;
-            }
-          `}
-        </style>
+        // eslint-disable-next-line react/no-unknown-property
+        <style jsx global>{`
+          .dark {
+            color-scheme: dark;
+          }
+        `}</style>
       )}
       {props.children}
     </ThemeProvider>

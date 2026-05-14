@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" fill="none">
+  <rect x="0" y="10" width="24" height="24" rx="6" fill="#4F46E5"/>
+  <path d="M6 22 L12 16 L18 22" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M12 16 L12 28" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="32" y="28" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-size="20" font-weight="600" fill="#0F172A" letter-spacing="-0.5">gobookme</text>
+</svg>

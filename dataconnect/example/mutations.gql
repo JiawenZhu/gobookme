@@ -1,0 +1,26 @@
+# GoBookMe Data Connect mutations
+
+mutation CreateUser($username: String!, $name: String, $email: String!, $uid: String!, $uuid: UUID!, $created: Timestamp!) @auth(expr: "auth.uid == uid") {
+  user_insert(data: {
+    username: $username,
+    name: $name,
+    email: $email,
+    identityProvider: "FIREBASE",
+    identityProviderId: $uid,
+    uuid: $uuid,
+    timeZone: "UTC",
+    weekStart: "Monday",
+    bufferTime: 0,
+    hideBranding: false,
+    created: $created,
+    completedOnboarding: false,
+    twoFactorEnabled: false,
+    role: "ADMIN",
+    locked: false,
+    isPlatformManaged: false,
+    autoOptInFeatures: true,
+    smsLockReviewedByAdmin: false,
+    smsLockState: "UNLOCKED"
+  })
+}
+
