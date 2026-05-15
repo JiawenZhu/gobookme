@@ -1,4 +1,5 @@
 import dayjs from "@calcom/dayjs";
+import { syncBookingToFirebase } from "@calcom/features/auth/lib/firebase-dc-sync";
 import { isPrismaObjOrUndefined } from "@calcom/lib/isPrismaObj";
 import { withReporting } from "@calcom/lib/sentryWrapper";
 import prisma from "@calcom/prisma";
@@ -136,7 +137,7 @@ async function saveBooking(
     });
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     if (originalBookingUpdateDataForCancellation) {
       await tx.booking.update(originalBookingUpdateDataForCancellation);
     }
@@ -145,6 +146,26 @@ async function saveBooking(
 
     return { ...booking, userUuid: booking.user?.uuid ?? null };
   });
+
+  syncBookingToFirebase({
+    id: result.id,
+    uid: result.uid,
+    title: result.title,
+    startTime: result.startTime,
+    endTime: result.endTime,
+    status: result.status,
+    paid: result.paid,
+    userId: result.userId,
+    eventTypeId: result.eventTypeId,
+    description: result.description,
+    location: result.location,
+    userPrimaryEmail: result.userPrimaryEmail,
+    iCalUID: result.iCalUID,
+    iCalSequence: result.iCalSequence,
+    creationSource: result.creationSource,
+  }).catch(() => {});
+
+  return result;
 }
 
 function getEventTypeRel(eventTypeId: EventTypeId) {

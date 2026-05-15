@@ -1,7 +1,7 @@
 {
-    "name": "Cal.diy",
-    "short_name": "Cal.diy",
-    "description": "Scheduling infrastructure for absolutely everyone.",
+    "name": "gobookme",
+    "short_name": "gobookme",
+    "description": "Smart scheduling for local businesses and hosts.",
     "icons": [
         {
             "src": "/api/logo?type=android-chrome-192",
@@ -14,10 +14,10 @@
             "type": "image/png"
         }
     ],
-    "theme_color": "#ffffff",
-    "background_color": "#ffffff",
+    "theme_color": "#4F46E5",
+    "background_color": "#FAFAFA",
     "display_override": ["minimal-ui"],
     "display": "standalone",
     "scope": "/",
-    "start_url": "/"  
+    "start_url": "/"
 }

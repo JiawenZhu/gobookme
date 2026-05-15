@@ -17,7 +17,7 @@ import type { AppRouter } from "@calcom/trpc/types/server/routers/_app";
 import { Alert } from "@calcom/ui/components/alert";
 import { UserAvatar } from "@calcom/ui/components/avatar";
 import { Button } from "@calcom/ui/components/button";
-import { DialogClose, DialogContent, DialogFooter, DialogTrigger } from "@calcom/ui/components/dialog";
+import { DialogClose, DialogContent, DialogFooter } from "@calcom/ui/components/dialog";
 import { Editor } from "@calcom/ui/components/editor";
 import { Form, Label, PasswordField, TextField } from "@calcom/ui/components/form";
 import { ImageUploader } from "@calcom/ui/components/image-uploader";
@@ -320,11 +320,14 @@ const ProfileView = ({ user }: Props) => {
       {/* Delete account Dialog */}
       <Dialog open={deleteAccountOpen} onOpenChange={setDeleteAccountOpen}>
         <SectionBottomActions align="end">
-          <DialogTrigger asChild>
-            <Button data-testid="delete-account" color="destructive" className="mt-1" StartIcon="trash-2">
-              {t("delete_account")}
-            </Button>
-          </DialogTrigger>
+          <Button
+            data-testid="delete-account"
+            color="destructive"
+            className="mt-1"
+            StartIcon="trash-2"
+            onClick={() => setDeleteAccountOpen(true)}>
+            {t("delete_account")}
+          </Button>
         </SectionBottomActions>
         <DialogContent
           title={t("delete_account_modal_title")}

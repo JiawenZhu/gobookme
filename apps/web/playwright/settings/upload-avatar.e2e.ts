@@ -48,7 +48,7 @@ test.describe("User Avatar", async () => {
 
       const avatarImage = page.getByTestId("profile-upload-avatar").locator("img");
 
-      await expect(avatarImage).toHaveAttribute("src", new RegExp(`^\/api\/avatar\/${objectKey}\.png$`));
+      await expect(avatarImage).toHaveAttribute("src", new RegExp(`^/api/avatar/${objectKey}.png$`));
 
       const urlResponse = await page.request.get((await avatarImage.getAttribute("src")) || "", {
         maxRedirects: 0,
@@ -62,7 +62,7 @@ test.describe("User Avatar", async () => {
 
       await expect(page.locator(`img`)).toHaveAttribute(
         "src",
-        new RegExp(`\/api\/avatar\/${objectKey}\.png$`)
+        new RegExp(`/api/avatar/${objectKey}.png$`)
       );
       // verify objectKey is passed to the OG image
       // yes, OG image URI encodes at multiple places.. don't want to mess with that.

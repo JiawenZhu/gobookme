@@ -23,7 +23,7 @@ const RedirectPage = async () => {
     redirect(onboardingPath);
   }
 
-  redirect("/event-types");
+  redirect("/home");
 };
 
 export default RedirectPage;

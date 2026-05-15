@@ -42,7 +42,7 @@ import { getIs24hClockFromLocalStorage, isBrowserLocale24h } from "@calcom/lib/t
 import { getTimeShiftFlags, getFirstShiftFlags } from "@calcom/lib/timeShift";
 import { CURRENT_TIMEZONE } from "@calcom/lib/timezoneConstants";
 import { localStorage } from "@calcom/lib/webstorage";
-import { AssignmentReasonEnum, BookingStatus, SchedulingType } from "@calcom/prisma/enums";
+import { type AssignmentReasonEnum, BookingStatus, SchedulingType } from "@calcom/prisma/enums";
 
 import assignmentReasonBadgeTitleMap from "@calcom/web/lib/booking/assignmentReasonBadgeTitleMap";
 import { bookingMetadataSchema } from "@calcom/prisma/zod-utils";

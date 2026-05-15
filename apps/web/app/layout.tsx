@@ -6,7 +6,7 @@ import { dir } from "i18next";
 import { Inter } from "next/font/google";
 import localFont from "next/font/local";
 import { cookies, headers } from "next/headers";
-import Script from "next/script";
+
 import type React from "react";
 
 import "../styles/globals.css";
@@ -32,11 +32,11 @@ export const viewport = {
   themeColor: [
     {
       media: "(prefers-color-scheme: light)",
-      color: "#f9fafb",
+      color: "#FAFAFA",
     },
     {
       media: "(prefers-color-scheme: dark)",
-      color: "#1C1C1C",
+      color: "#0F172A",
     },
   ],
 };
@@ -68,8 +68,8 @@ export const metadata = {
     "application-TileColor": "#ff0000",
   },
   twitter: {
-    site: "@calcom",
-    creator: "@calcom",
+    site: "@gobookme",
+    creator: "@gobookme",
     card: "summary_large_image",
   },
   robots: {
@@ -116,18 +116,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head nonce={nonce}>
         <style>{`
           :root {
-            --font-sans: ${interFont.style.fontFamily.replace(/\'/g, "")};
-            --font-cal: ${calFont.style.fontFamily.replace(/\'/g, "")};
+            --font-sans: ${interFont.style.fontFamily.replace(/'/g, "")};
+            --font-cal: ${calFont.style.fontFamily.replace(/'/g, "")};
           }
         `}</style>
-        {process.env.NODE_ENV === "development" && (
-          <Script
-            src="//unpkg.com/react-grab/dist/index.global.js"
-            crossOrigin="anonymous"
-            strategy="beforeInteractive"
-            data-options='{"activationKey":"Meta+c"}'
-          />
-        )}
       </head>
       <body
         className="dark:bg-default bg-subtle antialiased"

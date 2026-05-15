@@ -3,7 +3,7 @@
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { Button } from "@calcom/ui/components/button";
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@calcom/ui/components/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@calcom/ui/components/popover";
+import { Popover, PopoverContent } from "@calcom/ui/components/popover";
 import { Tooltip } from "@calcom/ui/components/tooltip";
 import { EyeOffIcon, PlusIcon } from "@coss/ui/icons";
 import type { Table } from "@tanstack/react-table";
@@ -37,25 +37,27 @@ function AddFilterButtonComponent<TData>(
     <div className="flex items-center space-x-2">
       <Popover open={open} onOpenChange={setOpen}>
         {variant === "base" && (
-          <PopoverTrigger asChild>
+          <Button
+            ref={ref}
+            color="secondary"
+            data-testid="add-filter-button"
+            StartIcon="list-filter"
+            className="h-full"
+            onClick={() => setOpen(!open)}>
+            {t("filter")}
+          </Button>
+        )}
+        {variant === "minimal" && (
+          <Tooltip content={t("add_filter")}>
             <Button
               ref={ref}
               color="secondary"
               data-testid="add-filter-button"
-              StartIcon="list-filter"
-              className="h-full">
-              {t("filter")}
+              className="h-full"
+              onClick={() => setOpen(!open)}>
+              <span className="sr-only">{t("filter")}</span>
+              <PlusIcon />
             </Button>
-          </PopoverTrigger>
-        )}
-        {variant === "minimal" && (
-          <Tooltip content={t("add_filter")}>
-            <PopoverTrigger asChild>
-              <Button ref={ref} color="secondary" data-testid="add-filter-button" className="h-full">
-                <span className="sr-only">{t("filter")}</span>
-                <PlusIcon />
-              </Button>
-            </PopoverTrigger>
           </Tooltip>
         )}
         <PopoverContent className="w-[200px] p-0" align="start">

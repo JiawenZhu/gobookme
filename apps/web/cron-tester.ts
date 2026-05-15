@@ -21,7 +21,7 @@ try {
   new CronJob(
     // Each 5 seconds
     "*/5 * * * * *",
-    async function () {
+    async () => {
       await Promise.allSettled([
         fetchCron("/cron/calendar-subscriptions"),
         // fetchCron("/cron/calVideoNoShowWebhookTriggers"),

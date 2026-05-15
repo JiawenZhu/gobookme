@@ -422,3 +422,44 @@ html[dir="rtl"] .react-tel-input .flag-dropdown {
   left: auto !important;
   right: 0 !important;
 }
+
+/* ─── gobookme Theme Override ───────────────────────────────────────────────
+ * Overrides the default Cal.diy palette with the gobookme design system:
+ * - Light: Zinc-50 surfaces, Indigo-600 accent
+ * - Dark:  Slate-900 surfaces, Indigo-500 accent
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Backgrounds — Zinc scale for a warm-neutral light mode */
+  --cal-bg: hsla(0, 0%, 98%, 1);           /* Zinc-50  #FAFAFA */
+  --cal-bg-emphasis: hsla(240, 5%, 96%, 1); /* Zinc-100 #F4F4F5 */
+  --cal-bg-subtle: hsla(240, 6%, 90%, 1);   /* Zinc-200 #E4E4E7 */
+  --cal-bg-muted: hsla(240, 5%, 96%, 1);    /* Zinc-100 — near-white muted */
+  --cal-bg-inverted: hsla(222, 47%, 11%, 1);/* Slate-900 #0F172A */
+
+  /* Brand — Indigo-600 accent */
+  --cal-brand: hsla(243, 75%, 59%, 1);      /* Indigo-600 #4F46E5 */
+  --cal-brand-emphasis: hsla(244, 55%, 41%, 1); /* Indigo-800 #3730A3 */
+  --cal-brand-text: hsla(0, 0%, 100%, 1);   /* white */
+
+  /* Rounded-xl vibe — bump base radii */
+  --radius-cal: 0.5rem;    /* was 0.25rem — now 8px */
+  --radius-cal-md: 0.625rem; /* was 0.375rem — now 10px */
+  --radius-cal-lg: 0.75rem;  /* was 0.5rem — now 12px */
+  --radius-cal-xl: 1rem;     /* was 0.75rem — now 16px */
+  --radius-cal-2xl: 1.25rem; /* was 1rem — now 20px */
+}
+
+.dark {
+  /* Backgrounds — Slate scale for a deep, rich dark mode */
+  --cal-bg: hsla(222, 47%, 11%, 1);          /* Slate-900 #0F172A */
+  --cal-bg-emphasis: hsla(215, 28%, 17%, 1); /* Slate-800 #1E293B */
+  --cal-bg-subtle: hsla(215, 20%, 26%, 1);   /* Slate-700 #334155 */
+  --cal-bg-muted: hsla(222, 84%, 5%, 1);     /* Slate-950 #020617 */
+  --cal-bg-inverted: hsla(210, 40%, 98%, 1); /* Slate-50  #F8FAFC */
+
+  /* Brand — Indigo-500 accent (lighter for dark mode contrast) */
+  --cal-brand: hsla(239, 84%, 67%, 1);       /* Indigo-500 #6366F1 */
+  --cal-brand-emphasis: hsla(234, 89%, 74%, 1); /* Indigo-400 #818CF8 */
+  --cal-brand-text: hsla(0, 0%, 100%, 1);    /* white */
+}

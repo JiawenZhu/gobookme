@@ -1,3 +1,4 @@
+import { syncEventTypeToFirebase } from "@calcom/features/auth/lib/firebase-dc-sync";
 import type { IEventTypesRepository } from "@calcom/features/eventtypes/eventtypes.repository.interface";
 import { MembershipRepository } from "@calcom/features/membership/repositories/MembershipRepository";
 import { LookupTarget, ProfileRepository } from "@calcom/features/profile/repositories/ProfileRepository";
@@ -152,12 +153,31 @@ export class EventTypeRepository implements IEventTypesRepository {
   };
 
   async create(data: IEventType) {
-    return await this.prismaClient.eventType.create({
+    const eventType = await this.prismaClient.eventType.create({
       data: this.generateCreateEventTypeData(data),
       include: {
         calVideoSettings: true,
       },
     });
+
+    syncEventTypeToFirebase({
+      id: eventType.id,
+      title: eventType.title,
+      slug: eventType.slug,
+      length: eventType.length,
+      userId: eventType.userId,
+      teamId: eventType.teamId,
+      description: eventType.description,
+      hidden: eventType.hidden,
+      position: eventType.position,
+      price: eventType.price,
+      currency: eventType.currency,
+      minimumBookingNotice: eventType.minimumBookingNotice,
+      beforeEventBuffer: eventType.beforeEventBuffer,
+      afterEventBuffer: eventType.afterEventBuffer,
+    }).catch(() => {});
+
+    return eventType;
   }
 
   async createMany(data: IEventType[]) {

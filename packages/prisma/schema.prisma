@@ -58,6 +58,40 @@ enum CreationSource {
   WEBAPP @map("webapp")
 }
 
+enum BusinessListingApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BusinessListingClaimStatus {
+  UNCLAIMED
+  CLAIMED
+  CLAIM_PENDING
+}
+
+enum BusinessListingVisibility {
+  DRAFT
+  PUBLIC
+  HIDDEN
+}
+
+enum BusinessClaimRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BusinessListingAnalyticsEvent {
+  DIRECTORY_VIEW
+  PROFILE_VIEW
+  QR_VISIT
+  BOOKING_CLICK
+  BOOKING_STARTED
+  BOOKING_COMPLETED
+  PAID_BOOKING_COMPLETED
+}
+
 model Host {
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId           Int
@@ -277,10 +311,11 @@ model EventType {
   secondaryEmailId Int?
   secondaryEmail   SecondaryEmail? @relation(fields: [secondaryEmailId], references: [id], onDelete: Cascade)
 
-  useBookerTimezone     Boolean     @default(false)
-  restrictionScheduleId Int?
-  restrictionSchedule   Schedule?   @relation("restrictionSchedule", fields: [restrictionScheduleId], references: [id])
-  hostGroups            HostGroup[]
+  useBookerTimezone       Boolean                  @default(false)
+  restrictionScheduleId   Int?
+  restrictionSchedule     Schedule?                @relation("restrictionSchedule", fields: [restrictionScheduleId], references: [id])
+  hostGroups              HostGroup[]
+  businessListingServices BusinessListingService[]
 
   bookingRequiresAuthentication Boolean                        @default(false)
   rrHostSubsetEnabled           Boolean                        @default(false)
@@ -507,6 +542,10 @@ model User {
   agents                         Agent[]
   oAuthClients                   OAuthClient[]
   holidaySettings                UserHolidaySettings?
+  businessListings               BusinessListing[]             @relation("BusinessListingOwner")
+  businessClaimRequests          BusinessClaimRequest[]        @relation("BusinessClaimRequester")
+  reviewedBusinessClaimRequests  BusinessClaimRequest[]        @relation("BusinessClaimReviewer")
+  businessListingAnalytics       BusinessListingAnalytics[]
 
   autoOptInFeatures Boolean @default(false)
 
@@ -644,9 +683,130 @@ model Team {
   // Monthly proration tracking
   seatChangeLogs    SeatChangeLog[]
   monthlyProrations MonthlyProration[]
+  businessListings  BusinessListing[]
 
   @@unique([slug, parentId])
   @@index([parentId])
+}
+
+model BusinessListing {
+  id                 String                        @id @default(cuid())
+  slug               String                        @unique
+  displayName        String
+  description        String?
+  city               String
+  neighborhood       String?
+  address            String?
+  googlePlaceId      String?
+  latitude           Float?
+  longitude          Float?
+  phone              String?
+  website            String?
+  instagram          String?
+  photos             String[]
+  approvalStatus     BusinessListingApprovalStatus @default(PENDING)
+  claimStatus        BusinessListingClaimStatus    @default(UNCLAIMED)
+  visibility         BusinessListingVisibility     @default(DRAFT)
+  featured           Boolean                       @default(false)
+  plan               String?
+  foundingCustomer   Boolean                       @default(false)
+  setupPackageStatus String?
+  paymentWillingness String?
+  ownerUserId        Int?
+  ownerUser          User?                         @relation("BusinessListingOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  ownerTeamId        Int?
+  ownerTeam          Team?                         @relation(fields: [ownerTeamId], references: [id], onDelete: SetNull)
+  categories         BusinessListingCategory[]
+  services           BusinessListingService[]
+  claimRequests      BusinessClaimRequest[]
+  analytics          BusinessListingAnalytics[]
+  createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
+
+  @@index([city, approvalStatus, visibility, featured])
+  @@index([approvalStatus, visibility])
+  @@index([neighborhood])
+  @@index([ownerUserId])
+  @@index([ownerTeamId])
+}
+
+model BusinessCategory {
+  id          String                    @id @default(cuid())
+  slug        String                    @unique
+  name        String
+  description String?
+  listings    BusinessListingCategory[]
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+}
+
+model BusinessListingCategory {
+  listingId  String
+  categoryId String
+  listing    BusinessListing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  category   BusinessCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  assignedAt DateTime         @default(now())
+
+  @@id([listingId, categoryId])
+  @@index([categoryId])
+}
+
+model BusinessListingService {
+  id          String          @id @default(cuid())
+  listingId   String
+  eventTypeId Int
+  position    Int             @default(0)
+  listing     BusinessListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  eventType   EventType       @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([listingId, eventTypeId])
+  @@index([eventTypeId])
+  @@index([listingId, position])
+}
+
+model BusinessClaimRequest {
+  id             String                     @id @default(cuid())
+  listingId      String
+  listing        BusinessListing            @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  requesterId    Int?
+  requester      User?                      @relation("BusinessClaimRequester", fields: [requesterId], references: [id], onDelete: SetNull)
+  requesterName  String
+  requesterEmail String
+  message        String?
+  status         BusinessClaimRequestStatus @default(PENDING)
+  reviewedById   Int?
+  reviewedBy     User?                      @relation("BusinessClaimReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt     DateTime?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  @@index([listingId])
+  @@index([requesterId])
+  @@index([status])
+}
+
+model BusinessListingAnalytics {
+  id                   String                        @id @default(cuid())
+  listingId            String
+  listing              BusinessListing               @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  event                BusinessListingAnalyticsEvent
+  source               String?
+  categorySlug         String?
+  eventTypeId          Int?
+  bookingId            Int?
+  booking              Booking?                      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  userId               Int?
+  user                 User?                         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  grossBookingValue    Int?
+  estimatedPlatformFee Int?
+  createdAt            DateTime                      @default(now())
+
+  @@index([listingId, event])
+  @@index([listingId, createdAt])
+  @@index([bookingId])
+  @@index([userId])
 }
 
 model CreditBalance {
@@ -849,69 +1009,70 @@ enum BookingStatus {
 }
 
 model Booking {
-  id                     Int                        @id @default(autoincrement())
-  uid                    String                     @unique
+  id                       Int                        @id @default(autoincrement())
+  uid                      String                     @unique
   // (optional) UID based on slot start/end time & email against duplicates
-  idempotencyKey         String?                    @unique
-  user                   User?                      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId                 Int?
+  idempotencyKey           String?                    @unique
+  user                     User?                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                   Int?
   // User's email at the time of booking
   /// @zod.import(["import { emailSchema } from '../../zod-utils'"]).custom.use(emailSchema)
-  userPrimaryEmail       String?
-  references             BookingReference[]
-  eventType              EventType?                 @relation(fields: [eventTypeId], references: [id])
-  eventTypeId            Int?
-  title                  String
-  description            String?
-  customInputs           Json?
+  userPrimaryEmail         String?
+  references               BookingReference[]
+  eventType                EventType?                 @relation(fields: [eventTypeId], references: [id])
+  eventTypeId              Int?
+  title                    String
+  description              String?
+  customInputs             Json?
   /// @zod.import(["import { bookingResponses } from '../../zod-utils'"]).custom.use(bookingResponses)
-  responses              Json?
-  startTime              DateTime
-  endTime                DateTime
-  attendees              Attendee[]
-  location               String?
-  createdAt              DateTime                   @default(now())
-  updatedAt              DateTime?                  @updatedAt
-  status                 BookingStatus              @default(ACCEPTED)
-  paid                   Boolean                    @default(false)
-  payment                Payment[]
-  destinationCalendar    DestinationCalendar?       @relation(fields: [destinationCalendarId], references: [id])
-  destinationCalendarId  Int?
-  cancellationReason     String?
-  rejectionReason        String?
-  reassignReason         String?
-  reassignBy             User?                      @relation("reassignByUser", fields: [reassignById], references: [id])
-  reassignById           Int?
-  dynamicEventSlugRef    String?
-  dynamicGroupSlugRef    String?
-  rescheduled            Boolean?
-  fromReschedule         String?
-  recurringEventId       String?
-  smsReminderNumber      String?
-  scheduledJobs          String[] // scheduledJobs is deprecated, please use scheduledTriggers instead
-  seatsReferences        BookingSeat[]
+  responses                Json?
+  startTime                DateTime
+  endTime                  DateTime
+  attendees                Attendee[]
+  location                 String?
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime?                  @updatedAt
+  status                   BookingStatus              @default(ACCEPTED)
+  paid                     Boolean                    @default(false)
+  payment                  Payment[]
+  destinationCalendar      DestinationCalendar?       @relation(fields: [destinationCalendarId], references: [id])
+  destinationCalendarId    Int?
+  cancellationReason       String?
+  rejectionReason          String?
+  reassignReason           String?
+  reassignBy               User?                      @relation("reassignByUser", fields: [reassignById], references: [id])
+  reassignById             Int?
+  dynamicEventSlugRef      String?
+  dynamicGroupSlugRef      String?
+  rescheduled              Boolean?
+  fromReschedule           String?
+  recurringEventId         String?
+  smsReminderNumber        String?
+  scheduledJobs            String[] // scheduledJobs is deprecated, please use scheduledTriggers instead
+  seatsReferences          BookingSeat[]
   /// @zod.import(["import { bookingMetadataSchema } from '../../zod-utils'"]).custom.use(bookingMetadataSchema)
-  metadata               Json?
-  isRecorded             Boolean                    @default(false)
-  iCalUID                String?                    @default("")
-  iCalSequence           Int                        @default(0)
-  instantMeetingToken    InstantMeetingToken?
-  rating                 Int?
-  ratingFeedback         String?
-  noShowHost             Boolean?                   @default(false)
-  scheduledTriggers      WebhookScheduledTriggers[]
-  oneTimePassword        String?                    @unique @default(uuid())
+  metadata                 Json?
+  isRecorded               Boolean                    @default(false)
+  iCalUID                  String?                    @default("")
+  iCalSequence             Int                        @default(0)
+  instantMeetingToken      InstantMeetingToken?
+  rating                   Int?
+  ratingFeedback           String?
+  noShowHost               Boolean?                   @default(false)
+  scheduledTriggers        WebhookScheduledTriggers[]
+  oneTimePassword          String?                    @unique @default(uuid())
   /// @zod.import(["import { emailSchema } from '../../zod-utils'"]).custom.use(emailSchema)
-  cancelledBy            String?
+  cancelledBy              String?
   /// @zod.import(["import { emailSchema } from '../../zod-utils'"]).custom.use(emailSchema)
-  rescheduledBy          String?
-  assignmentReason       AssignmentReason[]
-  internalNote           BookingInternalNote[]
-  creationSource         CreationSource?
-  tracking               Tracking?
-  expenseLogs            CreditExpenseLog[]
-  report                 BookingReport?
-  wrongAssignmentReports WrongAssignmentReport[]
+  rescheduledBy            String?
+  assignmentReason         AssignmentReason[]
+  internalNote             BookingInternalNote[]
+  creationSource           CreationSource?
+  tracking                 Tracking?
+  expenseLogs              CreditExpenseLog[]
+  report                   BookingReport?
+  wrongAssignmentReports   WrongAssignmentReport[]
+  businessListingAnalytics BusinessListingAnalytics[]
 
   // @@partial_index([reassignById])
 

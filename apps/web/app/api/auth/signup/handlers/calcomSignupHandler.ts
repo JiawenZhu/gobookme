@@ -1,5 +1,5 @@
-import process from "node:process";
 import { getPremiumMonthlyPlanPriceId } from "@calcom/app-store/stripepayment/lib/utils";
+import { syncUserToFirebase } from "@calcom/features/auth/lib/firebase-dc-sync";
 import { getLocaleFromRequest } from "@calcom/features/auth/lib/getLocaleFromRequest";
 import { sendEmailVerification } from "@calcom/features/auth/lib/verifyEmail";
 import { SIGNUP_ERROR_CODES } from "@calcom/features/auth/signup/constants";
@@ -210,7 +210,7 @@ const handler: CustomNextApiHandler = async (body, usernameStatus, query) => {
         }
       }
 
-      let user: { id: number };
+      let user: { id: number; uuid: string; username: string | null; name: string | null; email: string; locked: boolean };
       try {
         user = await prisma.user.upsert({
           where: { email },
@@ -234,7 +234,7 @@ const handler: CustomNextApiHandler = async (body, usernameStatus, query) => {
             password: { create: { hash: hashedPassword } },
             organizationId,
           },
-          select: { id: true },
+          select: { id: true, uuid: true, username: true, name: true, email: true, locked: true },
         });
       } catch (error) {
         if (isPrismaError(error) && error.code === "P2002") {
@@ -245,6 +245,8 @@ const handler: CustomNextApiHandler = async (body, usernameStatus, query) => {
         }
         throw error;
       }
+
+      syncUserToFirebase({ ...user, identityProvider: IdentityProvider.CAL }).catch(() => {});
 
       await createOrUpdateMemberships({
         user,
@@ -268,8 +270,9 @@ const handler: CustomNextApiHandler = async (body, usernameStatus, query) => {
     });
   } else {
     // Create the user
+    let newUser: { id: number; uuid: string; username: string | null; name: string | null; email: string; locked: boolean };
     try {
-      await prisma.user.create({
+      newUser = await prisma.user.create({
         data: {
           username,
           email,
@@ -281,6 +284,7 @@ const handler: CustomNextApiHandler = async (body, usernameStatus, query) => {
           },
           creationSource: CreationSource.WEBAPP,
         },
+        select: { id: true, uuid: true, username: true, name: true, email: true, locked: true },
       });
     } catch (error) {
       // Fallback for race conditions where user was created between our check and create
@@ -292,6 +296,9 @@ const handler: CustomNextApiHandler = async (body, usernameStatus, query) => {
       }
       throw error;
     }
+
+    syncUserToFirebase({ ...newUser, identityProvider: IdentityProvider.CAL }).catch(() => {});
+
     if (process.env.AVATARAPI_USERNAME && process.env.AVATARAPI_PASSWORD) {
       await prefillAvatar({ email });
     }

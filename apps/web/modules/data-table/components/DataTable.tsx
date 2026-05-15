@@ -381,7 +381,9 @@ function DataTableBody<TData>({
                 }),
               }}
               className="hover:bg-subtle border-muted flex w-full border-b">
-              <SeparatorRowRenderer separator={row.original as SeparatorRow} className={separatorClassName} />
+              <TableCell colSpan={table.getAllColumns().length} className="w-full p-0">
+                <SeparatorRowRenderer separator={row.original as SeparatorRow} className={separatorClassName} />
+              </TableCell>
             </TableRow>
           );
         }

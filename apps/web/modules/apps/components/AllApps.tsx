@@ -166,7 +166,7 @@ export function AllApps({ apps, searchText, categories, userAdminTeams }: AllApp
         .includes(searchText.toLowerCase().replace(/[\s\-_]/g, ""))
     : true
 )
-    .sort(function (a, b) {
+    .sort((a, b) => {
       if (a.name < b.name) return -1;
       else if (a.name > b.name) return 1;
       return 0;

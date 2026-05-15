@@ -10,7 +10,7 @@ let orgUserRouteMatch: MatcherRes;
 
 beforeAll(async () => {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  //@ts-ignore
+  //@ts-expect-error
   process.env.NEXT_PUBLIC_WEBAPP_URL = "http://example.com";
   const { orgUserRoutePath, orgUserTypeRoutePath } = await import("../../pagesAndRewritePaths");
 

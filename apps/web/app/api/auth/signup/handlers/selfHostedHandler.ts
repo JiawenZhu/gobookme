@@ -1,4 +1,4 @@
-import process from "node:process";
+import { syncUserToFirebase } from "@calcom/features/auth/lib/firebase-dc-sync";
 import { sendEmailVerification } from "@calcom/features/auth/lib/verifyEmail";
 import { SIGNUP_ERROR_CODES } from "@calcom/features/auth/signup/constants";
 import { createOrUpdateMemberships } from "@calcom/features/auth/signup/utils/createOrUpdateMemberships";
@@ -112,7 +112,7 @@ export default async function handler(body: Record<string, string>) {
         return NextResponse.json({ message: SIGNUP_ERROR_CODES.USER_ALREADY_EXISTS }, { status: 409 });
       }
 
-      let user: { id: number };
+      let user: { id: number; uuid: string; username: string | null; name: string | null; email: string; locked: boolean };
       try {
         user = await prisma.user.upsert({
           where: { email: userEmail },
@@ -136,7 +136,7 @@ export default async function handler(body: Record<string, string>) {
             password: { create: { hash: hashedPassword } },
             organizationId,
           },
-          select: { id: true },
+          select: { id: true, uuid: true, username: true, name: true, email: true, locked: true },
         });
       } catch (error) {
         if (isPrismaError(error) && error.code === "P2002") {
@@ -147,6 +147,8 @@ export default async function handler(body: Record<string, string>) {
         }
         throw error;
       }
+
+      syncUserToFirebase({ ...user, identityProvider: IdentityProvider.CAL }).catch(() => {});
 
       await createOrUpdateMemberships({
         user,
@@ -173,15 +175,16 @@ export default async function handler(body: Record<string, string>) {
     if (!isUsernameAvailable) {
       return NextResponse.json({ message: "A user exists with that username" }, { status: 409 });
     }
+    let newUser: { id: number; uuid: string; username: string | null; name: string | null; email: string; locked: boolean };
     try {
-      await prisma.user.create({
+      newUser = await prisma.user.create({
         data: {
           username: correctedUsername,
           email: userEmail,
           password: { create: { hash: hashedPassword } },
           identityProvider: IdentityProvider.CAL,
         },
-        select: { id: true },
+        select: { id: true, uuid: true, username: true, name: true, email: true, locked: true },
       });
     } catch (error) {
       // Fallback for race conditions where user was created between our check and create
@@ -193,6 +196,8 @@ export default async function handler(body: Record<string, string>) {
       }
       throw error;
     }
+
+    syncUserToFirebase({ ...newUser, identityProvider: IdentityProvider.CAL }).catch(() => {});
 
     if (process.env.AVATARAPI_USERNAME && process.env.AVATARAPI_PASSWORD) {
       await prefillAvatar({ email: userEmail });
