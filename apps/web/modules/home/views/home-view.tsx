@@ -269,37 +269,47 @@ export default function HomeView({
 
 type BookingItem = RouterOutputs["viewer"]["bookings"]["get"]["bookings"][number];
 
-function TodayAppointments() {
-  // Compute today's window in local time
-  const { todayStartISO, todayEndISO } = useMemo(() => {
-    const s = new Date();
-    s.setHours(0, 0, 0, 0);
-    const e = new Date();
-    e.setHours(23, 59, 59, 999);
-    return { todayStartISO: s.toISOString(), todayEndISO: e.toISOString() };
-  }, []);
+// Compute a stable date window once per render cycle and share across both sections
+function useDateWindow() {
+  return useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-  // Fetch upcoming + unconfirmed bookings from today onwards with generous limit
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    // "This week" = tomorrow through 7 days from today (rolling window)
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(todayStart.getDate() + 1);
+
+    const sevenDaysEnd = new Date(todayStart);
+    sevenDaysEnd.setDate(todayStart.getDate() + 7);
+    sevenDaysEnd.setHours(23, 59, 59, 999);
+
+    return {
+      todayStart,
+      todayEnd,
+      tomorrowStart,
+      sevenDaysEnd,
+      afterStartISO: todayStart.toISOString(),
+    };
+  }, []);
+}
+
+function TodayAppointments() {
+  const { afterStartISO, todayEnd } = useDateWindow();
+
   const { data, isLoading } = trpc.viewer.bookings.get.useQuery(
     {
-      filters: {
-        statuses: ["upcoming", "unconfirmed"],
-        afterStartDate: todayStartISO,
-      },
+      filters: { statuses: ["upcoming", "unconfirmed"], afterStartDate: afterStartISO },
       limit: 50,
       offset: 0,
     },
     { staleTime: 30_000 }
   );
 
-  const todayEnd = useMemo(() => new Date(todayEndISO), [todayEndISO]);
-
   const todayBookings = useMemo(
-    () =>
-      ((data?.bookings ?? []) as BookingItem[]).filter((b) => {
-        const start = new Date(b.startTime);
-        return start <= todayEnd;
-      }),
+    () => ((data?.bookings ?? []) as BookingItem[]).filter((b) => new Date(b.startTime) <= todayEnd),
     [data?.bookings, todayEnd]
   );
 
@@ -338,38 +348,25 @@ function TodayAppointments() {
 }
 
 function ThisWeekSection() {
-  const { weekStartISO, weekEndISO } = useMemo(() => {
-    const now = new Date();
-    const s = new Date(now);
-    s.setDate(now.getDate() - now.getDay()); // Sunday
-    s.setHours(0, 0, 0, 0);
-    const e = new Date(s);
-    e.setDate(s.getDate() + 6); // Saturday
-    e.setHours(23, 59, 59, 999);
-    return { weekStartISO: s.toISOString(), weekEndISO: e.toISOString() };
-  }, []);
+  const { afterStartISO, tomorrowStart, sevenDaysEnd } = useDateWindow();
 
+  // Re-use the same query key as TodayAppointments — React Query deduplicates the network call
   const { data, isLoading } = trpc.viewer.bookings.get.useQuery(
     {
-      filters: {
-        statuses: ["upcoming", "unconfirmed"],
-        afterStartDate: weekStartISO,
-      },
+      filters: { statuses: ["upcoming", "unconfirmed"], afterStartDate: afterStartISO },
       limit: 50,
       offset: 0,
     },
     { staleTime: 30_000 }
   );
 
-  const weekEnd = useMemo(() => new Date(weekEndISO), [weekEndISO]);
-
   const weekBookings = useMemo(
     () =>
       ((data?.bookings ?? []) as BookingItem[]).filter((b) => {
         const start = new Date(b.startTime);
-        return start <= weekEnd;
+        return start >= tomorrowStart && start <= sevenDaysEnd;
       }),
-    [data?.bookings, weekEnd]
+    [data?.bookings, tomorrowStart, sevenDaysEnd]
   );
 
   if (isLoading) {
@@ -380,7 +377,7 @@ function ThisWeekSection() {
     return (
       <div className="flex items-center gap-3 rounded-2xl border border-dashed border-subtle bg-default px-5 py-5">
         <Icon name="calendar-days" className="h-5 w-5 text-subtle" />
-        <p className="text-sm text-subtle">No bookings scheduled for this week.</p>
+        <p className="text-sm text-subtle">No bookings in the next 7 days.</p>
       </div>
     );
   }
