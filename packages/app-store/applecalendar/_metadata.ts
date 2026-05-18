@@ -11,10 +11,10 @@ export const metadata = {
   categories: ["calendar"],
   category: "calendar",
   logo: "icon.svg",
-  publisher: "Cal.diy",
+  publisher: "GoBookMe.com",
   slug: "apple-calendar",
-  url: "https://cal.com/",
-  email: "help@cal.com",
+  url: "https://gobookme.com/",
+  email: "help@gobookme.com",
   dirName: "applecalendar",
   isOAuth: false,
 } as AppMeta;

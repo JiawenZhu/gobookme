@@ -14,6 +14,8 @@ export type TDependencyData = {
   installed?: boolean;
 }[];
 
+const allowedAppSlugs = Array.from(GOBOOKME_ALLOWED_APP_SLUGS);
+
 /**
  * Get App metadata either using dirName or slug
  */
@@ -37,49 +39,98 @@ export async function getAppWithMetadata(app: { dirName: string } | { slug: stri
   return metadata;
 }
 
-/** Mainly to use in listings for the frontend, use in getStaticProps or getServerSideProps */
-export async function getAppRegistry() {
-  const dbApps = await prisma.app.findMany({
-    where: { enabled: true, slug: { in: Array.from(GOBOOKME_ALLOWED_APP_SLUGS) } },
-    select: { dirName: true, slug: true, categories: true, enabled: true, createdAt: true },
-  });
+async function getAllowedStaticApps(installCountPerApp: Record<string, number>) {
   const apps = [] as App[];
-  const installCountPerApp = await getInstallCountPerApp();
-  for await (const dbapp of dbApps) {
-    const app = await getAppWithMetadata(dbapp);
-    if (!app) continue;
-    // Skip if app isn't installed
-    /* This is now handled from the DB */
-    // if (!app.installed) return apps;
-    app.createdAt = dbapp.createdAt.toISOString();
+
+  for await (const [dirName] of Object.entries(appStoreMetadata)) {
+    const app = await getAppWithMetadata({ dirName });
+    if (!app || !GOBOOKME_ALLOWED_APP_SLUGS.has(app.slug)) continue;
+
     apps.push({
       ...app,
       category: app.category || "other",
-      installed:
-        true /* All apps from DB are considered installed by default. @TODO: Add and filter our by `enabled` property */,
-      installCount: installCountPerApp[dbapp.slug] || 0,
+      installed: true,
+      installCount: installCountPerApp[app.slug] || 0,
     });
   }
+
   return apps;
 }
 
-export async function getAppRegistryWithCredentials(userId: number, userAdminTeams: UserAdminTeams = []) {
-  // Get teamIds to grab existing credentials
+function getDependencyData(app: App, credentialAppSlugs: Set<string>) {
+  if (!app.dependencies) return [];
 
+  return app.dependencies.map((dependency) => {
+    const dependencyName = getAppFromSlug(dependency)?.name;
+    return { name: dependencyName, installed: credentialAppSlugs.has(dependency) };
+  });
+}
+
+function getSafeDelegationCredentialsForApp(
+  delegationCredentials: Awaited<ReturnType<typeof getAllDelegationCredentialsForUser>>,
+  appSlug: string
+) {
+  return delegationCredentials.flatMap((credential) => {
+    if (credential.appId !== appSlug) return [];
+
+    return [
+      {
+        id: credential.id,
+        type: credential.type,
+        userId: credential.userId,
+        user: credential.user,
+        teamId: credential.teamId,
+        appId: credential.appId,
+        invalid: credential.invalid,
+        delegationCredentialId: credential.delegationCredentialId,
+        delegatedToId: credential.delegatedToId,
+        appName: credential.appName,
+      },
+    ] satisfies Credential[];
+  });
+}
+
+/** Mainly to use in listings for the frontend, use in getStaticProps or getServerSideProps */
+export async function getAppRegistry() {
   const dbApps = await prisma.app.findMany({
-    where: { enabled: true, slug: { in: Array.from(GOBOOKME_ALLOWED_APP_SLUGS) } },
+    where: { enabled: true, slug: { in: allowedAppSlugs } },
+    select: { dirName: true, slug: true, categories: true, enabled: true, createdAt: true },
+  });
+
+  const installCountPerApp = await getInstallCountPerApp();
+  const appsBySlug = new Map<string, App>();
+
+  for (const app of await getAllowedStaticApps(installCountPerApp)) {
+    appsBySlug.set(app.slug, app);
+  }
+
+  for await (const dbapp of dbApps) {
+    const app = await getAppWithMetadata(dbapp);
+    if (!app) continue;
+    appsBySlug.set(dbapp.slug, {
+      ...app,
+      category: app.category || "other",
+      categories: dbapp.categories,
+      createdAt: dbapp.createdAt.toISOString(),
+      installed: true,
+      installCount: installCountPerApp[dbapp.slug] || 0,
+    });
+  }
+
+  return Array.from(appsBySlug.values());
+}
+
+export async function getAppRegistryWithCredentials(userId: number, userAdminTeams: UserAdminTeams = []) {
+  const dbApps = await prisma.app.findMany({
+    where: { enabled: true, slug: { in: allowedAppSlugs } },
     select: {
       ...safeAppSelect,
-      credentials: {
-        where: { OR: [{ userId }, { teamId: { in: userAdminTeams } }] },
-        select: safeCredentialSelect,
-      },
     },
-    orderBy: {
-      credentials: {
-        _count: "desc",
-      },
-    },
+  });
+
+  const credentials = await prisma.credential.findMany({
+    where: { appId: { in: allowedAppSlugs }, OR: [{ userId }, { teamId: { in: userAdminTeams } }] },
+    select: safeCredentialSelect,
   });
 
   const user = await prisma.user.findUnique({
@@ -103,37 +154,33 @@ export async function getAppRegistryWithCredentials(userId: number, userAdminTea
     isDefault?: boolean;
   })[];
   const installCountPerApp = await getInstallCountPerApp();
-  for await (const dbapp of dbApps) {
-    const delegationCredentialsForApp = delegationCredentials.filter(
-      (credential) => credential.appId === dbapp.slug
-    );
-    const nonDelegationCredentialsForApp = dbapp.credentials;
-    const allCredentials = [...delegationCredentialsForApp, ...nonDelegationCredentialsForApp];
-    const app = await getAppWithMetadata(dbapp);
-    if (!app) continue;
-    // Skip if app isn't installed
-    /* This is now handled from the DB */
-    // if (!app.installed) return apps;
-    app.createdAt = dbapp.createdAt.toISOString();
-    let dependencyData: TDependencyData = [];
-    if (app.dependencies) {
-      dependencyData = app.dependencies.map((dependency) => {
-        const dependencyInstalled = dbApps.some(
-          (dbAppIterator) => dbAppIterator.credentials.length && dbAppIterator.slug === dependency
-        );
-        // If the app marked as dependency is simply deleted from the codebase, we can have the situation where App is marked installed in DB but we couldn't get the app.
-        const dependencyName = getAppFromSlug(dependency)?.name;
-        return { name: dependencyName, installed: dependencyInstalled };
-      });
-    }
+  const credentialsByAppSlug = new Map<string, Credential[]>();
+  for (const credential of credentials) {
+    if (!credential.appId) continue;
+    const appCredentials = credentialsByAppSlug.get(credential.appId) ?? [];
+    appCredentials.push(credential);
+    credentialsByAppSlug.set(credential.appId, appCredentials);
+  }
+
+  const credentialAppSlugs = new Set(
+    credentials.flatMap((credential) => (credential.appId ? [credential.appId] : []))
+  );
+  const dbAppsBySlug = new Map(dbApps.map((dbApp) => [dbApp.slug, dbApp]));
+
+  for (const app of await getAllowedStaticApps(installCountPerApp)) {
+    const dbapp = dbAppsBySlug.get(app.slug);
+    const delegationCredentialsForApp = getSafeDelegationCredentialsForApp(delegationCredentials, app.slug);
+    const allCredentials = [...delegationCredentialsForApp, ...(credentialsByAppSlug.get(app.slug) ?? [])];
+    const dependencyData = getDependencyData(app, credentialAppSlugs);
 
     apps.push({
       ...app,
-      categories: dbapp.categories,
+      categories: dbapp?.categories ?? app.categories,
+      createdAt: dbapp?.createdAt.toISOString() ?? app.createdAt,
       credentials: allCredentials,
       installed: true,
-      installCount: installCountPerApp[dbapp.slug] || 0,
-      isDefault: usersDefaultApp === dbapp.slug,
+      installCount: installCountPerApp[app.slug] || 0,
+      isDefault: usersDefaultApp === app.slug,
       ...(app.dependencies && { dependencyData }),
     });
   }

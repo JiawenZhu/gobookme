@@ -1,16 +1,13 @@
+import { IS_DUB_REFERRALS_ENABLED } from "@calcom/lib/constants";
 import { getTranslate } from "app/_utils";
 import type { Metadata } from "next";
-
-import { IS_DUB_REFERRALS_ENABLED } from "@calcom/lib/constants";
-
 import Shell from "~/shell/Shell";
-
 import { DubReferralsPage } from "./DubReferralsPage";
 
 export const metadata: Metadata = {
-  title: "Cal.diy referral program - Earn money by sharing your link",
+  title: "GoBookMe referral program - Earn money by sharing your link",
   description:
-    "Earn 20% recurring commissions for a full year by referring others to Cal.diy, while giving your referrals 20% off for 12 months. Share your link and start earning today!",
+    "Earn 20% recurring commissions for a full year by referring others to GoBookMe, while giving your referrals 20% off for 12 months. Share your link and start earning today!",
 };
 
 // Export the appropriate component based on the feature flag

@@ -1,4 +1,5 @@
 import { appKeysSchemas } from "@calcom/app-store/apps.keys-schemas.generated";
+import { GOBOOKME_ALLOWED_APP_SLUGS } from "@calcom/app-store/gobookme-allowed-apps";
 import { isStripeConfiguredFromEnvironment } from "@calcom/app-store/stripepayment/lib/appKeys";
 import { getLocalAppMetadata } from "@calcom/app-store/utils";
 import type { PrismaClient } from "@calcom/prisma";
@@ -39,10 +40,16 @@ export const listLocalHandler = async ({ ctx, input }: ListLocalOptions) => {
     if (!(app.category === category || app.categories?.some((appCategory) => appCategory === category))) {
       return [];
     }
+    if (!GOBOOKME_ALLOWED_APP_SLUGS.has(app.slug)) {
+      return [];
+    }
 
     // Find app metadata
     const dbData = dbApps.find((dbApp) => dbApp.slug === app.slug);
-    const usesEnvironmentKeys = app.dirName === "stripepayment" && isStripeConfiguredFromEnvironment();
+    const usesEnvironmentKeys =
+      (app.dirName === "stripepayment" && isStripeConfiguredFromEnvironment()) ||
+      (app.dirName === "googlecalendar" && Boolean(app.installed));
+    const enabled = dbData?.enabled ?? usesEnvironmentKeys;
 
     // If the app already contains keys then return
     if (dbData?.keys && !usesEnvironmentKeys) {
@@ -56,7 +63,7 @@ export const listLocalHandler = async ({ ctx, input }: ListLocalOptions) => {
         // We know that keys are going to be an object or null. Prisma can not type check against JSON fields
         keys: dbData.keys as Prisma.JsonObject | null,
         dirName: app.dirName || app.slug,
-        enabled: dbData?.enabled || false,
+        enabled,
         isTemplate: app.isTemplate,
       };
     }
@@ -85,7 +92,7 @@ export const listLocalHandler = async ({ ctx, input }: ListLocalOptions) => {
       type: app.type,
       title: app.title,
       description: app.description,
-      enabled: dbData?.enabled ?? false,
+      enabled,
       dirName: app.dirName ?? app.slug,
       keys: Object.keys(keys).length === 0 || usesEnvironmentKeys ? null : keys,
     };

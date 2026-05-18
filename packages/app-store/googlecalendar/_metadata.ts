@@ -1,3 +1,4 @@
+import process from "node:process";
 import { validJson } from "@calcom/lib/jsonUtils";
 import type { AppMeta } from "@calcom/types/App";
 
@@ -12,10 +13,10 @@ export const metadata = {
   category: "calendar",
   categories: ["calendar"],
   logo: "icon.svg",
-  publisher: "Cal.diy",
+  publisher: "GoBookMe.com",
   slug: "google-calendar",
-  url: "https://cal.com/",
-  email: "help@cal.com",
+  url: "https://gobookme.com/",
+  email: "help@gobookme.com",
   dirName: "googlecalendar",
   isOAuth: true,
   delegationCredential: {

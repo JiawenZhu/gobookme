@@ -10,6 +10,9 @@ export const GOBOOKME_ALLOWED_APP_SLUGS = new Set([
   "apple-calendar",
   "cron", // Notion Calendar
 
+  // Payments
+  "stripe",
+
   // Analytics
   "ga4", // Google Analytics 4
   "gtm", // Google Tag Manager
