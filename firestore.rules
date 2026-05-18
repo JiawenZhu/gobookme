@@ -1,0 +1,91 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    // Authenticated and token is not revoked (checks Firebase Auth state)
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // User owns the document (document ID matches their Firebase UID)
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Only the fields listed are being written (prevents extra field injection)
+    function onlyFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ── /userPreferences/{uid} ─────────────────────────────────────────────────
+    // Each user can read/write only their own preferences document.
+    // Schema: theme, appTheme, locale, timeZone, weekStart, hideBranding,
+    //         completedOnboarding, bufferTime, migratedAt, email
+    match /userPreferences/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && onlyFields([
+          'email', 'theme', 'appTheme', 'locale', 'timeZone',
+          'weekStart', 'hideBranding', 'completedOnboarding',
+          'bufferTime', 'migratedAt', 'updatedAt'
+        ]);
+      allow delete: if false; // Never delete — deactivate account via auth instead
+    }
+
+    // ── /notifications/{uid}/items/{notifId} ───────────────────────────────────
+    // Each user can read/write only their own notification sub-collection.
+    // Schema: type, title, body, read, createdAt, linkUrl
+    match /notifications/{uid}/items/{notifId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && onlyFields(['type', 'title', 'body', 'read', 'createdAt', 'linkUrl'])
+        && request.resource.data.read == false   // new notifications start unread
+        && request.resource.data.createdAt == request.time;
+      allow update: if isOwner(uid)
+        && onlyFields(['read'])                  // users can only mark read/unread
+        && request.resource.data.read is bool;
+      allow delete: if isOwner(uid);             // user can clear own notifications
+    }
+
+    // ── /businessListingMeta/{listingId} ───────────────────────────────────────
+    // Public read (anyone can see listing metadata like view counts).
+    // Writes only from authenticated users; viewCount only increments.
+    match /businessListingMeta/{listingId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && onlyFields([
+          'name', 'status', 'city', 'categoryId',
+          'viewCount', 'createdAt', 'updatedAt', 'migratedAt'
+        ])
+        && request.resource.data.viewCount == 0; // must start at 0
+      allow update: if isSignedIn()
+        && (
+          // Owner updating metadata fields
+          onlyFields(['name', 'status', 'city', 'categoryId', 'updatedAt'])
+          ||
+          // Any authenticated user incrementing view count by exactly 1
+          (
+            onlyFields(['viewCount', 'updatedAt'])
+            && request.resource.data.viewCount == resource.data.viewCount + 1
+          )
+        );
+      allow delete: if false; // archive via status field instead
+    }
+
+    // ── /sessions/{uid} ────────────────────────────────────────────────────────
+    // Firebase session metadata (last active, device info).
+    // Written server-side via Admin SDK — client can only read own session.
+    match /sessions/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false; // Admin SDK only
+    }
+
+    // ── Catch-all: deny everything else ───────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

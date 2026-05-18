@@ -314,15 +314,23 @@ export const FirebaseCredentialsProvider = CredentialsProvider({
       const email = decoded.email;
       if (!email) return null;
 
-      let user = await prisma.user.findFirst({
-        where: { email },
-        select: { id: true, email: true, name: true, username: true, role: true, locale: true, twoFactorEnabled: true },
-      });
+      const select = {
+        id: true,
+        email: true,
+        name: true,
+        username: true,
+        role: true,
+        locale: true,
+        twoFactorEnabled: true,
+        firebaseUid: true,
+      } as const;
+
+      let user = await prisma.user.findFirst({ where: { email }, select });
 
       if (!user) {
         const baseUsername = slugify(email.split("@")[0]);
         const username = usernameSlug(baseUsername);
-        const newUser = await prisma.user.create({
+        user = await prisma.user.create({
           data: {
             email,
             name: decoded.name ?? email.split("@")[0],
@@ -330,10 +338,16 @@ export const FirebaseCredentialsProvider = CredentialsProvider({
             emailVerified: new Date(),
             identityProvider: IdentityProvider.GOOGLE,
             identityProviderId: decoded.uid,
+            firebaseUid: decoded.uid,
           },
-          select: { id: true, email: true, name: true, username: true, role: true, locale: true, twoFactorEnabled: true },
+          select,
         });
-        user = newUser;
+      } else if (!user.firebaseUid) {
+        // Link Firebase UID to existing account on first Google sign-in
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { firebaseUid: decoded.uid },
+        });
       }
 
       return {
