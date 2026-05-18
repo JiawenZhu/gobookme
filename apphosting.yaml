@@ -71,34 +71,39 @@ env:
     availability:
       - RUNTIME
 
-  # These are public-facing URLs — not sensitive, but must be set before first deploy.
-  # Replace with your actual domain (or Firebase App Hosting URL initially).
+  - variable: POSTGRES_SSL_REJECT_UNAUTHORIZED
+    value: "false"
+    availability:
+      - RUNTIME
+
+  # These are public-facing URLs — not sensitive, but must match the active
+  # Firebase App Hosting domain until gobookme.app is mapped to this backend.
   - variable: NEXTAUTH_URL
-    value: https://gobookme.app
+    value: https://gobookme-main--gobookme-app.us-central1.hosted.app
     availability:
       - BUILD
       - RUNTIME
 
   - variable: NEXT_PUBLIC_WEBAPP_URL
-    value: https://gobookme.app
+    value: https://gobookme-main--gobookme-app.us-central1.hosted.app
     availability:
       - BUILD
       - RUNTIME
 
   - variable: NEXT_PUBLIC_WEBSITE_URL
-    value: https://gobookme.app
+    value: https://gobookme-main--gobookme-app.us-central1.hosted.app
     availability:
       - BUILD
       - RUNTIME
 
   - variable: NEXT_PUBLIC_EMBED_LIB_URL
-    value: https://gobookme.app/embed/embed.js
+    value: https://gobookme-main--gobookme-app.us-central1.hosted.app/embed/embed.js
     availability:
       - BUILD
       - RUNTIME
 
   - variable: ALLOWED_HOSTNAMES
-    value: '"gobookme.app"'
+    value: '"gobookme-main--gobookme-app.us-central1.hosted.app","gobookme.app"'
     availability:
       - RUNTIME
 
@@ -245,4 +250,3 @@ env:
     secret: EMAIL_SERVER_PORT
     availability:
       - RUNTIME
-
